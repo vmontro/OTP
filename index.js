@@ -23,8 +23,8 @@ app.get('/', (req, res) => {
   const otpUrl = speakeasy.otpauthURL({
     secret: secretBase32,
     encoding: 'base32',
-    label: 'TEST ',
-    issuer: 'vmontro',
+    label: 'JSON SERVER',
+    issuer: 'Vincenzo Montrone',
   });
 
   // Genera il codice QR e restituisci la pagina HTML con il codice QR
@@ -68,7 +68,28 @@ app.post('/verify', (req, res) => {
     const payload = { id: 0, user: 'vmontro', password: '123' };
     const authToken = jwt.sign(otp, jwtSecret);
 
-    res.json({ authToken });
+    const html = `
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>OTP - JSON SERVER</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+      </head>
+      <body>
+        <br>
+        <div class="container is-max-desktop">
+          <textarea class="textarea" value="${authToken}" disabled></textarea>
+          <br>
+          <button class="button is-link is-fullwidth">Copia</button>
+        </div>
+      </body>
+    </html>
+    `;
+
+    res.send(html);
+
+    // res.json({ authToken });
   } else {
     res.status(401).json({ error: 'Codice OTP non valido' });
   }
