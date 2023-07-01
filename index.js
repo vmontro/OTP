@@ -1,11 +1,18 @@
 const express = require('express');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const jwt = require('jsonwebtoken');
 
+// Porta Server OTP
+const PORT = 8085;
+
+// Creazione di un'app Express
 const app = express();
-const port = 3000;
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Configurazione segreta per JWT
+const jwtSecret = 'il_tuo_segreto';
 
 // Genera la chiave segreta per l'utente
 const secret = speakeasy.generateSecret({ length: 20 });
@@ -45,25 +52,50 @@ app.get('/', (req, res) => {
 });
 
 app.post('/verify', (req, res) => {
+  // const { token, code } = req.body;
   const otp = req.body.otp;
 
-  // Verifica il token OTP fornito dall'utente
+  // Verifica il codice OTP
   const verified = speakeasy.totp.verify({
     secret: secretBase32,
     encoding: 'base32',
     token: otp,
-    window: 1, // Numero di finestre temporali per consentire la validazione
+    window: 1 // Controllo del codice valido per 1 step di tempo
   });
 
   if (verified) {
-    // Il token OTP fornito dall'utente è valido
-    res.send('Token OTP corretto. Accesso consentito!');
+    // Genera un JWT senza scadenza utilizzando il payload dell'utente
+    const payload = { id: 0, user: 'vmontro', password: '123' };
+    const authToken = jwt.sign(otp, jwtSecret);
+
+    res.json({ authToken });
   } else {
-    // Il token OTP fornito dall'utente è invalido
-    res.send('Token OTP non corretto. Accesso negato!');
+    res.status(401).json({ error: 'Codice OTP non valido' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server in ascolto sulla porta ${port}`);
+// Middleware per verificare l'autenticazione JWT
+function authenticateToken(req, res, next) {
+  const authToken = req.headers.authorization;
+  if (authToken) {
+    // Verifica l'autenticità del token JWT
+    jwt.verify(authToken, jwtSecret, (err, user) => {
+      if (err) {
+        res.status(403).json({ error: 'Token JWT non valido' });
+      } else {
+        next();
+      }
+    });
+  } else {
+    res.status(401).json({ error: 'Token JWT mancante' });
+  }
+}
+
+app.get('/protected-route', authenticateToken, (req, res) => {
+  res.json({ message: 'Hai accesso alla rotta protetta!' });
+});
+
+// Avvio del server
+app.listen(PORT, () => {
+  console.log(`Server OTP in ascolto su porta ${PORT}`);
 });
